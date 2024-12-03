@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Account Details</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='account.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/intl-tel-input/17.0.8/css/intlTelInput.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/intl-tel-input/17.0.8/js/intlTelInput.min.js"></script>
+    <script>
+        function validatePassword() {
+            var password = document.getElementById("password").value;
+            var passwordPattern = /^(?=.*[a-zA-Z])(?=.*\d)(?=.*[!@#$%^&*])[A-Za-z\d!@#$%^&*]{8,16}$/;
+            if (!passwordPattern.test(password)) {
+                alert("Password must be 8-16 characters long, alphanumeric, and contain at least one special character.");
+                return false;
+            }
+            return true;
+        }
+
+        function initPhoneNumberInput() {
+            var phoneInput = document.querySelector("#phone_number");
+            window.intlTelInput(phoneInput, {
+                initialCountry: "auto",
+                geoIpLookup: function (callback) {
+                    fetch('https://ipapi.co/json')
+                        .then(function(response) { return response.json(); })
+                        .then(function(data) { callback(data.country_code); })
+                        .catch(function() { callback("us"); });
+                },
+                utilsScript: "https://cdnjs.cloudflare.com/ajax/libs/intl-tel-input/17.0.8/js/utils.js"
+            });
+        }
+
+        document.addEventListener("DOMContentLoaded", function() {
+            initPhoneNumberInput();
+        });
+    </script>
+</head>
+<body>
+    <header>
+        <h1>Account Details</h1>
+    </header>
+    <div class="container">
+        <form method="post" action="{{ url_for('account') }}" onsubmit="return validatePassword()">
+            {{ form.hidden_tag() }} <!-- Include CSRF token -->
+            <label for="email">Email:</label>
+            <input type="email" id="email" name="email" value="{{ user.email }}" readonly>
+
+            <label for="password">Password:</label>
+            {{ form.password(id="password", required=True) }}
+            <small>Password must be 8-16 characters long, alphanumeric, and contain at least one special character.</small>
+
+            <label for="phone_number">Phone Number:</label>
+            {{ form.phone_number(id="phone_number", value=user.phone_number, required=True) }}
+
+            <label for="house_address">House Address:</label>
+            {{ form.house_address(id="house_address", value=user.house_address, required=True) }}
+
+            <label for="pincode">Pincode:</label>
+            {{ form.pincode(id="pincode", value=user.pincode, required=True) }}
+
+            <button type="submit">Update</button>
+        </form>
+    </div>
+</body>
+</html>

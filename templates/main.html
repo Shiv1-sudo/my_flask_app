@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Product Listing</title>
+    <link rel="stylesheet" href="/static/mainstyles.css">
+</head>
+<body>
+    <header>
+        <h1>Welcome to Dutta Store</h1>
+        <nav>
+            <div>Logo</div>
+            <form action="{{ url_for('search') }}" method="get">
+                <input type="text" name="query" placeholder="Search..." id="search-bar">
+                <button type="submit">Search</button>
+            </form>
+            <div>
+                <a href="{{ url_for('account') }}">Account</a>
+                <a href="{{url_for('chat')}}">Chat</a>
+            </div>
+        </nav>
+    </header>
+    <div class="container">
+        <div class="sidebar">
+            <h2>Categories</h2>
+            <ul>
+                <li><a href="{{ url_for('category', category_name='Electronics') }}">Electronics</a></li>
+                <li><a href="{{ url_for('category', category_name='GIFTS') }}">GIFTS</a></li>
+                <li><a href="{{ url_for('category', category_name='Home & Kitchen') }}">Home & Kitchen</a></li>
+                <!-- Add more categories here -->
+            </ul>
+        </div>
+        <div class="main">
+            {% if not products %}
+                <p>No products found in the {{ category }} category.</p>
+            {% else %}
+                {% for product in products %}
+                <div class="product">
+                    <img src="{{ product['image_url'] }}" alt="{{ product['name'] }}">
+                    <div class="product-info">
+                        <h2>{{ product['name'] }}</h2>
+                        <p>{{ product['description'] }}</p>
+                        <p class="product-price">${{ product['price'] }}</p>
+                        <button class="product-add">Add to Cart</button>
+                    </div>
+                </div>
+                {% endfor %}
+            {% endif %}
+        </div>
+    </div>
+    <footer>
+        <p>&copy; 2024 Dutta Store. All rights reserved.</p>
+    </footer>
+</body>
+</html>

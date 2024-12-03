@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Welcome to Store hompe Page</title>
+</head>
+<body>
+    <h1>Welcome to class just ask!</h1>
+    <form method="POST" action="{{ url_for('your_action') }}">
+        {{ form.csrf_token }}
+        <label for="example">Example Input:</label>
+        <input type="text" id="example" name="example" required>
+        <br><br>
+        <input type="submit" value="Submit">
+    </form>
+</body>
+</html>

@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='signup.css') }}">
+    <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
+</head>
+<body>
+    <header>
+        <h1>Login</h1>
+    </header>
+    <div class="container">
+        <form method="post" action="{{ url_for('login') }}">
+            <h2>Login to Your Account</h2>
+            {{ form.hidden_tag() }}
+            <div class="form-group">
+                <label for="email">Email:</label>
+                {{ form.email(id="email", class_="form-control") }}
+            </div>
+            <div class="form-group">
+                <label for="password">Password:</label>
+                {{ form.password(id="password", class_="form-control") }}
+            </div>
+            <button type="submit">Login</button>
+            {% with messages = get_flashed_messages() %}
+                {% if messages %}
+                    <ul>
+                    {% for message in messages %}
+                        <li>{{ message }}</li>
+                    {% endfor %}
+                    </ul>
+                {% endif %}
+            {% endwith %}
+        </form>
+        <p>Don't have an account? <a href="{{ url_for('signup') }}">Sign up</a></p>
+    </div>
+    <div class="footer">
+        <p>&copy; 2024 Dutta Store. All rights reserved.</p>
+    </div>
+</body>
+</html>

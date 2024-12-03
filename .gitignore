@@ -1,0 +1,5 @@
+/.env
+/dialogflow-service-account.json
+/env.text.txt
+/requirements.txt
+/test.py

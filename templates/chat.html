@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat with Dutta Store</title>
+    <link rel="stylesheet" href="/static/chatstyles.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+    <header>
+        <h1>Chat with Dutta Store</h1>
+    </header>
+    <div class="chat-container">
+        <div id="chat-box"></div>
+        <div class="input-container">
+            <input type="text" id="user-input" placeholder="Type your message here...">
+            <button onclick="sendMessage()">Send</button>
+        </div>
+    </div>
+
+    <script>
+        function getCsrfToken() {
+            return document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+        }
+
+        function sendMessage() {
+            var userMessage = $('#user-input').val();
+            if (userMessage.trim() === '') {
+                return; // Do not send empty messages
+            }
+            $('#chat-box').append('<div class="user-message">' + userMessage + '</div>');
+            $('#user-input').val('');
+
+            $.ajax({
+                url: '/get_response',
+                type: 'POST',
+                contentType: 'application/json',
+                headers: {
+                    'X-CSRFToken': getCsrfToken()  // Include CSRF token in headers
+                },
+                data: JSON.stringify({ message: userMessage }),
+                success: function(response) {
+                    $('#chat-box').append('<div class="bot-response">' + response.response + '</div>');
+                    // Scroll to the bottom of the chat box
+                    $('#chat-box').scrollTop($('#chat-box')[0].scrollHeight);
+                }
+            });
+        }
+
+        // Allow pressing Enter to send messages
+        $('#user-input').keypress(function(event) {
+            if (event.which == 13) {
+                sendMessage();
+            }
+        });
+    </script>
+</body>
+</html>
