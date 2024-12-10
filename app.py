@@ -13,13 +13,11 @@ import redis
 import logging
 from dotenv import load_dotenv
 from google.cloud import dialogflow
-from google.cloud import dialogflow
 from google.oauth2 import service_account
 import os
 
 # Load environment variables
 load_dotenv()
-# Get the path to the service account file from the environment variable
 service_account_path = os.getenv('GOOGLE_APPLICATION_CREDENTIALS')
 
 # Logging configuration
@@ -58,14 +56,10 @@ limiter = Limiter(
 )
 
 csrf = CSRFProtect(app)
-csrf.init_app(app)  # Initialize CSRF protection
+csrf.init_app(app)
 
-#Load Dialogflow credentials #Google Cloud API
-#path not to harcode will call from config file 
-#(E:\STUDY MATerial\my_flask_app\dialogflow-service-account.json")
-credentials=service_account.Credentials.from_service_account_file(service_account_path)
+credentials = service_account.Credentials.from_service_account_file(service_account_path)
 
-# Custom password validator
 def strong_password(form, field):
     password = field.data
     if len(password) < 8 or len(password) > 16:
@@ -74,8 +68,11 @@ def strong_password(form, field):
         raise ValidationError('Password must contain at least one digit.')
     if not any(char.isalpha() for char in password):
         raise ValidationError('Password must contain at least one letter.')
-    if not any (char in '!@#$%^&*()_+-=[]{}|;:,.<>?`~' for char in password):
+    if not any(char in '!@#$%^&*()_+-=[]{}|;:,.<>?`~' for char in password):
         raise ValidationError('Password must contain at least one special character.')
+
+class DummyForm(FlaskForm):
+    pass
 
 class LoginForm(FlaskForm):
     email = StringField('Email', validators=[InputRequired()])
@@ -88,7 +85,7 @@ class SignupForm(FlaskForm):
     house_address = StringField('House Address', validators=[InputRequired()])
     pincode = StringField('Pincode', validators=[InputRequired()])
 
-class AccountForm(FlaskForm):  # Added new form for account updates with password validation
+class AccountForm(FlaskForm):
     password = PasswordField('Password', validators=[InputRequired(), strong_password])
     phone_number = StringField('Phone Number', validators=[InputRequired()])
     house_address = StringField('House Address', validators=[InputRequired()])
@@ -100,7 +97,8 @@ def home():
     cursor.execute("SELECT * FROM products")
     products = cursor.fetchall()
     cursor.close()
-    return render_template('main.html', products=products)
+    form = DummyForm()  # Pass the dummy form to include the CSRF token
+    return render_template('main.html', products=products, form=form)
 
 @app.route('/category/<category_name>')
 def category(category_name):
@@ -108,7 +106,8 @@ def category(category_name):
     cursor.execute("SELECT * FROM products WHERE category = %s", (category_name,))
     products = cursor.fetchall()
     cursor.close()
-    return render_template('main.html', products=products, category=category_name)
+    form = DummyForm()
+    return render_template('main.html', products=products, category=category_name, form=form)
 
 @app.route('/search')
 def search():
@@ -117,12 +116,13 @@ def search():
     cursor.execute("SELECT * FROM products WHERE name LIKE %s", (f"%{query}%",))
     products = cursor.fetchall()
     cursor.close()
-    return render_template('main.html', products=products)
+    form = DummyForm()
+    return render_template('main.html', products=products, form=form)
 
 @app.route('/chat')
 def chat():
-    # Render a template for the chat interface
-    return render_template('chat.html')
+    form = DummyForm()
+    return render_template('chat.html', form=form)
 
 @app.route('/get_response', methods=['POST'])
 def get_response():
@@ -193,7 +193,7 @@ def signup():
 @app.route('/account', methods=['GET', 'POST'])
 @limiter.limit("5 per minute")
 def account():
-    form = AccountForm()  # Use the new AccountForm for account updates
+    form = AccountForm()
     if 'email' not in session:
         return redirect(url_for('login'))
 
@@ -227,6 +227,40 @@ def account():
     user = cursor.fetchone()
     cursor.close()
     return render_template('account.html', user=user, form=form)
+
+@app.route('/cart')
+def cart():
+    form = DummyForm()
+    cursor = db.cursor(dictionary=True)
+    cursor.execute("SELECT * FROM cart WHERE user_email = %s", (session['email'],))
+    cart_items = cursor.fetchall()
+    cursor.close()
+    return render_template('cart.html', cart_items=cart_items, form=form)
+
+@app.route('/add_to_cart/<product_id>', methods=['POST'])
+def add_to_cart(product_id):
+    cursor = db.cursor()
+    cursor.execute("INSERT INTO cart (user_email, product_id) VALUES (%s, %s)", (session['email'], product_id))
+    db.commit()
+    cursor.close()
+    return redirect(url_for('cart'))
+
+@app.route('/payment')
+def payment():
+    form = DummyForm()
+    return render_template
+
+#payment process logic 
+@app.route('/process_payment', methods=['POST'])
+def process_payment():
+    card_number = request.form.get('card_number')
+    expiry_date = request.form.get('expiry_date')
+    cvv = request.form.get('cvv')
+    name_on_card = request.form.get('name_on_card')
+    # Add logic to process payment here, e.g., using a payment gateway API
+    flash('Payment successful!')
+    return redirect(url_for('home'))
+
 
 def open_browser():
     if not os.environ.get("FLASK_RUN_FROM_CLI"):
