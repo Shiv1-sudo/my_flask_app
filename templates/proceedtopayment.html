@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Proceed to Payment</title>
+    <link rel="stylesheet" href="/static/cartpayment.css">
+</head>
+<body>
+    <header>
+        <h1>Proceed to Payment</h1>
+        <nav>
+            <a href="{{ url_for('home') }}">Home</a>
+            <a href="{{ url_for('account') }}">Account</a>
+        </nav>
+    </header>
+    <div class="container">
+        <h2>Payment Options</h2>
+        <form id="payment-form">
+            <label for="payment-method">Choose Payment Method:</label>
+            <select name="payment_method" id="payment-method" required>
+                <option value="" disabled selected>Select a payment method</option>
+                <option value="debit">Debit Card</option>
+                <option value="credit">Credit Card</option>
+                <option value="cod">Cash on Delivery</option>
+            </select>
+            <div id="payment-details" style="margin-top: 1rem;"></div>
+            <button type="submit" id="submit-details" style="display: none;">Submit Details</button>
+        </form>
+        <form action="{{ url_for('process_payment') }}" method="post" id="pay-now-form" style="display: none;">
+            <input type="hidden" name="payment_method" id="hidden-payment-method">
+            <input type="hidden" name="details" id="hidden-details">
+            <button type="submit" class="button-pay">Pay Now</button>
+        </form>
+        <a href="{{ url_for('raise_complaint') }}" class="button-complaint">Raise a Complaint</a>
+    </div>
+    <footer>
+        <p>&copy; 2024 Dutta Store. All rights reserved.</p>
+    </footer>
+    <script>
+        document.getElementById('payment-method').addEventListener('change', function() {
+            var method = this.value;
+            var details = document.getElementById('payment-details');
+            var submitButton = document.getElementById('submit-details');
+            details.innerHTML = '';
+            submitButton.style.display = 'block';
+
+            if (method === 'debit' || method === 'credit') {
+                details.innerHTML = `
+                    <label for="card-number">Card Number:</label>
+                    <input type="text" id="card-number" name="card_number" required>
+                    <label for="expiry-date">Expiry Date:</label>
+                    <input type="text" id="expiry-date" name="expiry_date" required>
+                    <label for="cvv">CVV:</label>
+                    <input type="text" id="cvv" name="cvv" required>
+                    <label for="name-on-card">Name on Card:</label>
+                    <input type="text" id="name-on-card" name="name_on_card" required>
+                `;
+            } else if (method === 'cod') {
+                details.innerHTML = `
+                    <label for="address">Address:</label>
+                    <input type="text" id="address" name="address" required>
+                    <label for="pincode">Pincode:</label>
+                    <input type="text" id="pincode" name="pincode" required>
+                    <label for="phone">Phone Number:</label>
+                    <div style="display: flex; align-items: center;">
+                        <select name="country_code" id="country_code" required>
+                            <option value="+1">+1 (USA)</option>
+                            <option value="+91">+91 (India)</option>
+                            <option value="+44">+44 (UK)</option>
+                            <!-- Add more country codes as needed -->
+                        </select>
+                        <input type="text" id="phone" name="phone" required style="margin-left: 10px;">
+                    </div>
+                    <label for="email">Email Address:</label>
+                    <input type="email" id="email" name="email" required>
+                `;
+            }
+        });
+
+        document.getElementById('payment-form').addEventListener('submit', function(event) {
+            event.preventDefault();
+            var method = document.getElementById('payment-method').value;
+            var formData = new FormData(this);
+            var details = {};
+
+            formData.forEach(function(value, key) {
+                details[key] = value;
+            });
+
+            document.getElementById('hidden-payment-method').value = method;
+            document.getElementById('hidden-details').value = JSON.stringify(details);
+
+            document.getElementById('pay-now-form').style.display = 'block';
+        });
+    </script>
+</body>
+</html>

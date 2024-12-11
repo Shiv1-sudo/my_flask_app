@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Raise a Complaint</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <header>
+        <h1>Raise a Complaint</h1>
+        <nav>
+            <a href="{{ url_for('home') }}">Home</a>
+            <a href="{{ url_for('account') }}">Account</a>
+        </nav>
+    </header>
+    <div class="container">
+        <form action="{{ url_for('raise_complaint') }}" method="post">
+            {{ form.hidden_tag() }} <!-- Include CSRF token -->
+            <label for="complaint_details">Complaint Details:</label>
+            <textarea id="complaint_details" name="complaint_details" required></textarea>
+            <button type="submit" class="button">Submit</button>
+        </form>
+    </div>
+    <footer>
+        <p>&copy; 2024 Dutta Store. All rights reserved.</p>
+    </footer>
+</body>
+</html>

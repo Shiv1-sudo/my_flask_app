@@ -20,18 +20,22 @@
         {% else %}
             <ul>
                 {% for item in cart_items %}
-                <li>
-                    <div class="cart-item">
+                <li class="cart-item">
+                    <div class="cart-item-info">
                         <img src="{{ item['image_url'] }}" alt="{{ item['name'] }}">
-                        <div class="cart-item-info">
+                        <div>
                             <h2>{{ item['name'] }}</h2>
                             <p class="cart-item-price">${{ item['price'] }}</p>
                         </div>
                     </div>
+                    <form action="{{ url_for('remove_from_cart', item_id=item['id']) }}" method="post">
+                        {{ form.hidden_tag() }} <!-- Include CSRF token -->
+                        <button type="submit" class="button-remove">Remove</button>
+                    </form>
                 </li>
                 {% endfor %}
             </ul>
-            <a href="{{ url_for('payment') }}" class="button">Proceed to Payment</a>
+            <a href="{{ url_for('proceed_to_payment') }}" class="button">Proceed to Payment</a>
         {% endif %}
     </div>
     <footer>
