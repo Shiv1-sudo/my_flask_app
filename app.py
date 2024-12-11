@@ -1,3 +1,4 @@
+import json
 from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify
 import webbrowser
 import threading
@@ -228,14 +229,6 @@ def account():
     cursor.close()
     return render_template('account.html', user=user, form=form)
 
-@app.route('/cart')
-def cart():
-    form = DummyForm()
-    cursor = db.cursor(dictionary=True)
-    cursor.execute("SELECT * FROM cart WHERE user_email = %s", (session['email'],))
-    cart_items = cursor.fetchall()
-    cursor.close()
-    return render_template('cart.html', cart_items=cart_items, form=form)
 
 @app.route('/add_to_cart/<product_id>', methods=['POST'])
 def add_to_cart(product_id):
@@ -245,22 +238,135 @@ def add_to_cart(product_id):
     cursor.close()
     return redirect(url_for('cart'))
 
-@app.route('/payment')
-def payment():
+@app.route('/cart')
+def cart():
     form = DummyForm()
-    return render_template
+    cursor = db.cursor(dictionary=True)
+    query = """
+        SELECT cart.product_id as id, products.image_url, products.name, products.price 
+        FROM cart 
+        JOIN products ON cart.product_id = products.id 
+        WHERE cart.user_email = %s
+    """
+    cursor.execute(query, (session['email'],))
+    cart_items = cursor.fetchall()
+    cursor.close()
+    return render_template('cart.html', cart_items=cart_items, form=form)
 
-#payment process logic 
+
+@app.route('/remove_from_cart/<int:item_id>', methods=['POST'])
+def remove_from_cart(item_id):
+    try:
+        cursor = db.cursor()
+        logging.info("Attempting to remove item with ID %s from cart", item_id)
+        query = "DELETE FROM cart WHERE user_email = %s AND product_id = %s"
+        cursor.execute(query, (session['email'], item_id))
+        db.commit()
+        cursor.close()
+        if cursor.rowcount > 0:
+            logging.info("Item with ID %s successfully removed from cart", item_id)
+            flash('Item removed from cart successfully!')
+        else:
+            logging.warning("No item with ID %s found in cart", item_id)
+            flash('No such item found in your cart.')
+    except mysql.connector.Error as err:
+        logging.error("Error: %s", err)
+        flash('An error occurred while trying to remove the item from your cart.')
+    return redirect(url_for('cart'))
+
+@app.route('/proceed_to_payment')
+def proceed_to_payment():
+    form = DummyForm()
+    return render_template('ProceedToPayment.html', form=form)
+
+@app.route('/payment', methods=['GET', 'POST'])
+def payment():
+    if request.method == 'POST':
+        payment_method = request.form.get('payment_method')
+        return render_template('payment.html', payment_method=payment_method)
+    return render_template('ProceedToPayment.html')
+
+'''@app.route('/process_payment', methods=['POST'])
+def process_payment():
+    payment_method = request.form.get('payment_method')
+    
+    if payment_method == 'cod':
+        address = request.form.get('address')
+        pincode = request.form.get('pincode')
+        country_code = request.form.get('country_code')
+        phone = request.form.get('phone')
+        email = request.form.get('email')
+        # Insert the address, pincode, phone, email, and payment method into the orders table
+        try:
+            cursor = db.cursor()
+            query = """
+                INSERT INTO orders (user_email, address, pincode, phone, email, payment_method) 
+                VALUES (%s, %s, %s, %s, %s, %s)
+            """
+            cursor.execute(query, (session['email'], address, pincode, country_code + phone, email, payment_method))
+            db.commit()
+            cursor.close()
+            flash('Order placed successfully!')
+        except mysql.connector.Error as err:
+            logging.error("Error: %s", err)
+            flash('An error occurred while placing the order.')
+    else:
+        card_number = request.form.get('card_number')
+        expiry_date = request.form.get('expiry_date')
+        cvv = request.form.get('cvv')
+        name_on_card = request.form.get('name_on_card')
+        # Add logic to process payment here, e.g., using a payment gateway API
+        flash('Payment successful!')
+    
+    return redirect(url_for('home'))'''
 @app.route('/process_payment', methods=['POST'])
 def process_payment():
-    card_number = request.form.get('card_number')
-    expiry_date = request.form.get('expiry_date')
-    cvv = request.form.get('cvv')
-    name_on_card = request.form.get('name_on_card')
-    # Add logic to process payment here, e.g., using a payment gateway API
-    flash('Payment successful!')
-    return redirect(url_for('home'))
+    payment_method = request.form.get('payment_method')
+    details = request.form.get('details')
 
+    # Convert the details JSON string back to a dictionary
+    details = json.loads(details)
+
+    if payment_method == 'cod':
+        address = details.get('address')
+        pincode = details.get('pincode')
+        country_code = details.get('country_code')
+        phone = details.get('phone')
+        email = details.get('email')
+        # Insert the address, pincode, phone, email, and payment method into the orders table
+        try:
+            cursor = db.cursor()
+            query = """
+                INSERT INTO orders (user_email, address, pincode, phone, email, payment_method) 
+                VALUES (%s, %s, %s, %s, %s, %s)
+            """
+            cursor.execute(query, (session['email'], address, pincode, country_code + phone, email, payment_method))
+            db.commit()
+            cursor.close()
+            flash('Order placed successfully!')
+        except mysql.connector.Error as err:
+            logging.error("Error: %s", err)
+            flash('An error occurred while placing the order.')
+    else:
+        card_number = details.get('card_number')
+        expiry_date = details.get('expiry_date')
+        cvv = details.get('cvv')
+        name_on_card = details.get('name_on_card')
+        # Add logic to process payment here, e.g., using a payment gateway API
+        flash('Payment details saved successfully!')
+
+    return redirect(url_for('proceed_to_payment'))
+
+
+@app.route('/raise_complaint', methods=['GET', 'POST'])
+def raise_complaint():
+    if request.method == 'POST':
+        # Handle complaint form submission
+        complaint_details = request.form.get('complaint_details')
+        # Process the complaint, save to database or send an email, etc.
+        flash('Your complaint has been submitted successfully.')
+        return redirect(url_for('cart'))
+    return render_template('raise_complaint.html')
 
 def open_browser():
     if not os.environ.get("FLASK_RUN_FROM_CLI"):
