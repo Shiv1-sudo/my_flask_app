@@ -15,6 +15,10 @@ import logging
 from dotenv import load_dotenv
 from google.cloud import dialogflow
 from google.oauth2 import service_account
+from flask_mail import Mail, Message
+from wtforms.validators import DataRequired, Email
+from flask_mail import Mail
+from wtforms import TextAreaField, StringField, SubmitField 
 import os
 
 # Load environment variables
@@ -58,7 +62,6 @@ limiter = Limiter(
 
 csrf = CSRFProtect(app)
 csrf.init_app(app)
-
 credentials = service_account.Credentials.from_service_account_file(service_account_path)
 
 def strong_password(form, field):
@@ -74,6 +77,9 @@ def strong_password(form, field):
 
 class DummyForm(FlaskForm):
     pass
+
+# DummyForm for CSRF protection
+
 
 class LoginForm(FlaskForm):
     email = StringField('Email', validators=[InputRequired()])
@@ -92,6 +98,7 @@ class AccountForm(FlaskForm):
     house_address = StringField('House Address', validators=[InputRequired()])
     pincode = StringField('Pincode', validators=[InputRequired()])
 
+
 @app.route('/')
 def home():
     cursor = db.cursor(dictionary=True)
@@ -100,42 +107,6 @@ def home():
     cursor.close()
     form = DummyForm()  # Pass the dummy form to include the CSRF token
     return render_template('main.html', products=products, form=form)
-
-@app.route('/category/<category_name>')
-def category(category_name):
-    cursor = db.cursor(dictionary=True)
-    cursor.execute("SELECT * FROM products WHERE category = %s", (category_name,))
-    products = cursor.fetchall()
-    cursor.close()
-    form = DummyForm()
-    return render_template('main.html', products=products, category=category_name, form=form)
-
-@app.route('/search')
-def search():
-    query = request.args.get('query')
-    cursor = db.cursor(dictionary=True)
-    cursor.execute("SELECT * FROM products WHERE name LIKE %s", (f"%{query}%",))
-    products = cursor.fetchall()
-    cursor.close()
-    form = DummyForm()
-    return render_template('main.html', products=products, form=form)
-
-@app.route('/chat')
-def chat():
-    form = DummyForm()
-    return render_template('chat.html', form=form)
-
-@app.route('/get_response', methods=['POST'])
-def get_response():
-    user_message = request.json.get('message')
-    session_client = dialogflow.SessionsClient(credentials=credentials)
-    session = session_client.session_path('your-dialogflow-project-id', 'unique-session-id')
-
-    text_input = dialogflow.TextInput(text=user_message, language_code='en')
-    query_input = dialogflow.QueryInput(text=text_input)
-    response = session_client.detect_intent(session=session, query_input=query_input)
-    
-    return jsonify({'response': response.query_result.fulfillment_text})
 
 @app.route('/login', methods=['GET', 'POST'])
 @limiter.limit("5 per minute")
@@ -229,11 +200,78 @@ def account():
     cursor.close()
     return render_template('account.html', user=user, form=form)
 
+@app.route('/category/<category_name>')
+def category(category_name):
+    cursor = db.cursor(dictionary=True)
+    cursor.execute("SELECT * FROM products WHERE category = %s", (category_name,))
+    products = cursor.fetchall()
+    cursor.close()
+    form = DummyForm()
+    return render_template('main.html', products=products, category=category_name, form=form)
+
+@app.route('/search')
+def search():
+    query = request.args.get('query')
+    cursor = db.cursor(dictionary=True)
+    cursor.execute("SELECT * FROM products WHERE name LIKE %s", (f"%{query}%",))
+    products = cursor.fetchall()
+    cursor.close()
+    form = DummyForm()
+    return render_template('main.html', products=products, form=form)
+
+@app.route('/chat')
+def chat():
+    form = DummyForm()
+    return render_template('chat.html', form=form)
+
+@app.route('/get_response', methods=['POST'])
+def get_response():
+    try:
+        logging.info("Received a request.")
+
+        # Ensure the database connection is active
+        if not db.is_connected():
+            logging.warning("Database connection lost, attempting to reconnect.")
+            db.reconnect(attempts=3, delay=2)
+
+        user_message = request.json.get('message', '').lower()  # Convert to lowercase for easier comparison
+        logging.info("User message: %s", user_message)
+
+        # Define a set of greeting messages
+        greetings = ["hi", "hello", "hey", "greetings"]
+
+        if user_message in greetings:
+            logging.info("Greeting detected.")
+            return jsonify({'response': 'Hi there! How can I help you today?'})
+
+        # For other queries, respond with contact information and regards
+        logging.info("Handling general query.")
+        response_message = (
+            "For any queries, please contact duttashivani06@gmail.com for a quick response. "
+            "Best regards."
+        )
+        return jsonify({'response': response_message})
+    except mysql.connector.Error as db_err:
+        logging.error("Database error in get_response: %s", db_err, exc_info=True)
+        return jsonify({'response': 'A database error occurred while processing your request.'})
+    except Exception as e:
+        logging.error("General error in get_response: %s", e, exc_info=True)
+        return jsonify({'response': 'An error occurred while processing your request.'})
 
 @app.route('/add_to_cart/<product_id>', methods=['POST'])
 def add_to_cart(product_id):
     cursor = db.cursor()
-    cursor.execute("INSERT INTO cart (user_email, product_id) VALUES (%s, %s)", (session['email'], product_id))
+    # Check if the product is already in the cart
+    cursor.execute("SELECT * FROM cart WHERE user_email = %s AND product_id = %s", (session['email'], product_id))
+    cart_item = cursor.fetchone()
+    
+    if cart_item:
+        # Update quantity and price
+        cursor.execute("UPDATE cart SET quantity = quantity + 1 WHERE user_email = %s AND product_id = %s", (session['email'], product_id))
+    else:
+        # Insert new product into cart
+        cursor.execute("INSERT INTO cart (user_email, product_id, quantity) VALUES (%s, %s, %s)", (session['email'], product_id, 1))
+    
     db.commit()
     cursor.close()
     return redirect(url_for('cart'))
@@ -243,7 +281,7 @@ def cart():
     form = DummyForm()
     cursor = db.cursor(dictionary=True)
     query = """
-        SELECT cart.product_id as id, products.image_url, products.name, products.price 
+        SELECT cart.id as cart_item_id, cart.product_id, products.image_url, products.name, products.price, cart.quantity, (products.price * cart.quantity) as total_price
         FROM cart 
         JOIN products ON cart.product_id = products.id 
         WHERE cart.user_email = %s
@@ -254,24 +292,38 @@ def cart():
     return render_template('cart.html', cart_items=cart_items, form=form)
 
 
-@app.route('/remove_from_cart/<int:item_id>', methods=['POST'])
-def remove_from_cart(item_id):
+@app.route('/remove_from_cart/<int:cart_item_id>', methods=['POST'])
+def remove_from_cart(cart_item_id):
     try:
         cursor = db.cursor()
-        logging.info("Attempting to remove item with ID %s from cart", item_id)
-        query = "DELETE FROM cart WHERE user_email = %s AND product_id = %s"
-        cursor.execute(query, (session['email'], item_id))
-        db.commit()
-        cursor.close()
-        if cursor.rowcount > 0:
-            logging.info("Item with ID %s successfully removed from cart", item_id)
-            flash('Item removed from cart successfully!')
+        logging.info("Attempting to decrease quantity for item with ID %s in cart", cart_item_id)
+
+        # Check current quantity
+        cursor.execute("SELECT quantity FROM cart WHERE user_email = %s AND id = %s", (session['email'], cart_item_id))
+        cart_item = cursor.fetchone()
+
+        if cart_item:
+            current_quantity = cart_item[0]  # Use tuple indexing
+
+            if current_quantity > 1:
+                # Decrease the quantity by 1
+                cursor.execute("UPDATE cart SET quantity = quantity - 1 WHERE user_email = %s AND id = %s", (session['email'], cart_item_id))
+            else:
+                # Remove the item if quantity is 1
+                cursor.execute("DELETE FROM cart WHERE user_email = %s AND id = %s", (session['email'], cart_item_id))
+            
+            db.commit()
+            cursor.close()
+
+            logging.info("Item with ID %s successfully updated/removed from cart", cart_item_id)
+            flash('Item updated/removed from cart successfully!')
         else:
-            logging.warning("No item with ID %s found in cart", item_id)
+            logging.warning("No item with ID %s found in cart", cart_item_id)
             flash('No such item found in your cart.')
+
     except mysql.connector.Error as err:
         logging.error("Error: %s", err)
-        flash('An error occurred while trying to remove the item from your cart.')
+        flash('An error occurred while trying to update/remove the item from your cart.')
     return redirect(url_for('cart'))
 
 @app.route('/proceed_to_payment')
@@ -286,39 +338,6 @@ def payment():
         return render_template('payment.html', payment_method=payment_method)
     return render_template('ProceedToPayment.html')
 
-'''@app.route('/process_payment', methods=['POST'])
-def process_payment():
-    payment_method = request.form.get('payment_method')
-    
-    if payment_method == 'cod':
-        address = request.form.get('address')
-        pincode = request.form.get('pincode')
-        country_code = request.form.get('country_code')
-        phone = request.form.get('phone')
-        email = request.form.get('email')
-        # Insert the address, pincode, phone, email, and payment method into the orders table
-        try:
-            cursor = db.cursor()
-            query = """
-                INSERT INTO orders (user_email, address, pincode, phone, email, payment_method) 
-                VALUES (%s, %s, %s, %s, %s, %s)
-            """
-            cursor.execute(query, (session['email'], address, pincode, country_code + phone, email, payment_method))
-            db.commit()
-            cursor.close()
-            flash('Order placed successfully!')
-        except mysql.connector.Error as err:
-            logging.error("Error: %s", err)
-            flash('An error occurred while placing the order.')
-    else:
-        card_number = request.form.get('card_number')
-        expiry_date = request.form.get('expiry_date')
-        cvv = request.form.get('cvv')
-        name_on_card = request.form.get('name_on_card')
-        # Add logic to process payment here, e.g., using a payment gateway API
-        flash('Payment successful!')
-    
-    return redirect(url_for('home'))'''
 @app.route('/process_payment', methods=['POST'])
 def process_payment():
     payment_method = request.form.get('payment_method')
@@ -361,12 +380,34 @@ def process_payment():
 @app.route('/raise_complaint', methods=['GET', 'POST'])
 def raise_complaint():
     if request.method == 'POST':
-        # Handle complaint form submission
-        complaint_details = request.form.get('complaint_details')
-        # Process the complaint, save to database or send an email, etc.
-        flash('Your complaint has been submitted successfully.')
-        return redirect(url_for('cart'))
+        flash('For any concerns, please reach out to our support team.')
+        return redirect(url_for('raise_complaint'))
     return render_template('raise_complaint.html')
+
+'''if __name__ == '__main__':
+    app.run(debug=True)'''
+
+'''@app.route('/raise_complaint', methods=['GET', 'POST'])
+def raise_complaint():
+    form = DummyForm()
+    if form.validate_on_submit():
+        flash('For any concerns, please reach out to our support team at duttashivani06@gmail.com.')
+        return redirect(url_for('raise_complaint'))
+    print("Rendering template with form:", form)
+    return render_template('raise_complaint.html', form=form)'''
+
+
+'''@app.route('/open_email_client')
+def open_email_client():
+    user_email = request.args.get('email')
+    user_phone = request.args.get('phone')
+    complaint_details = request.args.get('details')
+
+    subject = 'Complaint Submission'
+    body = f'For any concerns, please contact the support team at duttashivani06@gmail.com. Complaint Details: {complaint_details}. User Email: {user_email}, Phone: {user_phone}.'
+
+    return redirect(f'mailto:duttashivani06@gmail.com?subject={subject}&body={body}')'''
+
 
 def open_browser():
     if not os.environ.get("FLASK_RUN_FROM_CLI"):
