@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Raise a Complaint</title>
-    <link rel="stylesheet" href="/static/style.css">
+    <link rel="stylesheet" href="/static/raise_complaint.css">
 </head>
 <body>
     <header>
@@ -15,11 +15,19 @@
         </nav>
     </header>
     <div class="container">
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                <div class="flash-message">
+                    <ul>
+                        {% for message in messages %}
+                            <li>{{ message }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            {% endif %}
+        {% endwith %}
         <form action="{{ url_for('raise_complaint') }}" method="post">
-            {{ form.hidden_tag() }} <!-- Include CSRF token -->
-            <label for="complaint_details">Complaint Details:</label>
-            <textarea id="complaint_details" name="complaint_details" required></textarea>
-            <button type="submit" class="button">Submit</button>
+            <button type="submit" class="button">Raise a Complaint</button>
         </form>
     </div>
     <footer>
