@@ -41,3 +41,13 @@ Coding Standards
 **JavaScript**
 •	ES6 Standards: Use of modern JavaScript syntax and features for better performance and readability.
 •	Event Handling: Efficient event handling to improve user interaction and minimize load times.
+## Project Demo
+### Watch Video 1
+![Watch the video](https://github.com/Shiv1-sudo/my_flask_app/tree/main/videos/App WalkThrough.mp4)
+### Watch Video 1
+![Watch the video](https://github.com/Shiv1-sudo/my_flask_app/tree/main/videos/App details.mp4)
+## Project Demo posted on Youtube 
+### Watch on YouTube
+[Watch Video 1 on YouTube](https://youtu.be/8iygGObu8As)
+### Watch on YouTube
+[Watch Video 2 on YouTube](https://youtu.be/3A3y-0CKpZ0)
