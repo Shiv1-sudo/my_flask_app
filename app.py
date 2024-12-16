@@ -384,30 +384,6 @@ def raise_complaint():
         return redirect(url_for('raise_complaint'))
     return render_template('raise_complaint.html')
 
-'''if __name__ == '__main__':
-    app.run(debug=True)'''
-
-'''@app.route('/raise_complaint', methods=['GET', 'POST'])
-def raise_complaint():
-    form = DummyForm()
-    if form.validate_on_submit():
-        flash('For any concerns, please reach out to our support team at duttashivani06@gmail.com.')
-        return redirect(url_for('raise_complaint'))
-    print("Rendering template with form:", form)
-    return render_template('raise_complaint.html', form=form)'''
-
-
-'''@app.route('/open_email_client')
-def open_email_client():
-    user_email = request.args.get('email')
-    user_phone = request.args.get('phone')
-    complaint_details = request.args.get('details')
-
-    subject = 'Complaint Submission'
-    body = f'For any concerns, please contact the support team at duttashivani06@gmail.com. Complaint Details: {complaint_details}. User Email: {user_email}, Phone: {user_phone}.'
-
-    return redirect(f'mailto:duttashivani06@gmail.com?subject={subject}&body={body}')'''
-
 
 def open_browser():
     if not os.environ.get("FLASK_RUN_FROM_CLI"):
